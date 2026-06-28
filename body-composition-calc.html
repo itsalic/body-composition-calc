@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Body Composition Calculator</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #141414;
+    --border: #2a2a2a;
+    --text: #e0e0e0;
+    --muted: #666;
+    --positive: #22c55e;
+    --negative: #ef4444;
+    --neutral: #6b7280;
+    --accent: #6366f1;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 0;
+  }
+
+  .container {
+    width: 100vw;
+    height: 100vh;
+    max-width: 450px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 10px;
+    -ms-overflow-style: none; 
+    scrollbar-width: none; 
+}
+.container::-webkit-scrollbar { 
+    display: none;  /* Older Safari and Chromium */
+}
+
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 2px;
+    letter-spacing: -0.5px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 1.05rem;
+    margin-bottom: 10px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .slider-group {
+    margin-bottom: 10px;
+  }
+  .slider-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .slider-value {
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .slider-stops {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 3px;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg);
+    cursor: pointer;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg);
+    cursor: pointer;
+  }
+
+  /* Results */
+  .results-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .result-row {
+    margin-bottom: 14px;
+  }
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .result-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .result-value {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .bar-track {
+    position: relative;
+    width: 100%;
+    height: 36px;
+    background: var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .bar-track.bidirectional {
+    display: flex;
+    justify-content: center;
+  }
+
+  .bar-track.bidirectional::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--text);
+    opacity: 0.3;
+    transform: translateX(-50%);
+    z-index: 2;
+  }
+
+  .bar-fill {
+    position: absolute;
+    height: 100%;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+  }
+
+  .bar-fill.positive {
+    background: var(--positive);
+    right: 0;
+  }
+
+  .bar-fill.negative {
+    background: var(--negative);
+    left: 0;
+  }
+
+  .bar-fill.neutral {
+    background: var(--neutral);
+  }
+
+  .bar-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .verdict {
+    text-align: center;
+    padding: 12px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 1.05rem;
+    line-height: 1.5;
+  }
+
+  .verdict strong {
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Body Composition Calculator</h1>
+
+  <!-- Sliders -->
+  <div class="card">
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>Training Age</span>
+      </div>
+      <input type="range" id="trainingAge" min="0" max="4" step="1" value="0">
+      <div class="slider-stops">
+        <span>Novice</span>
+        <span></span>
+        <span>Intermediate</span>
+        <span></span>
+        <span>Advanced</span>
+      </div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>Body Fat</span>
+      </div>
+      <input type="range" id="bodyFat" min="0" max="5" step="1" value="2">
+      <div class="slider-stops">
+        <span>&lt;7.5%</span>
+        <span>7.5-10%</span>
+        <span>10-15%</span>
+        <span>15-20%</span>
+        <span>20-30%</span>
+        <span>30%+</span>
+      </div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>Energy Balance</span>
+      </div>
+      <input type="range" id="energyBalance" min="0" max="4" step="1" value="2">
+      <div class="slider-stops">
+        <span>Large deficit</span>
+        <span>Deficit</span>
+        <span>Maintenance</span>
+        <span>Slight surplus</span>
+        <span>Large surplus</span>
+      </div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>Protein Intake</span>
+      </div>
+      <input type="range" id="protein" min="0" max="3" step="1" value="1">
+      <div class="slider-stops">
+        <span>Low</span>
+        <span>Medium</span>
+        <span>High</span>
+        <span>Extra High</span>
+      </div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>Training Stimulus</span>
+      </div>
+      <input type="range" id="trainingStimulus" min="0" max="3" step="1" value="1">
+      <div class="slider-stops">
+        <span>Poor</span>
+        <span>Light</span>
+        <span>Moderate</span>
+        <span>Hard</span>
+      </div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>Alcohol</span>
+      </div>
+      <input type="range" id="alcohol" min="0" max="3" step="1" value="0">
+      <div class="slider-stops">
+        <span>None</span>
+        <span>Light</span>
+        <span>Moderate</span>
+        <span>Heavy</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-card">
+    <div class="result-row">
+      <div class="result-header">
+        <span class="result-label">Muscle Gain Potential</span>
+        <span class="result-value" id="muscleValue">—</span>
+      </div>
+      <div class="bar-track bidirectional" id="muscleTrack">
+        <div class="bar-fill" id="muscleFill"></div>
+      </div>
+      <div class="bar-labels">
+        <span>Loss</span>
+        <span>None</span>
+        <span>Gain</span>
+      </div>
+    </div>
+
+    <div class="result-row">
+      <div class="result-header">
+        <span class="result-label">Fat Gain Potential</span>
+        <span class="result-value" id="fatValue">—</span>
+      </div>
+      <div class="bar-track bidirectional" id="fatTrack">
+        <div class="bar-fill" id="fatFill"></div>
+      </div>
+      <div class="bar-labels">
+        <span>Loss</span>
+        <span>None</span>
+        <span>Gain</span>
+      </div>
+    </div>
+
+    <div class="verdict" id="verdict"></div>
+  </div>
+</div>
+
+<script>
+  // --- Label maps ---
+  const trainingAgeLabels = ['Novice', '', 'Intermediate', '', 'Advanced'];
+  const bodyFatLabels = ['&lt;7.5%', '7.5-10%', '10-15%', '15-20%', '20-30%', '30%+'];
+  const energyBalanceLabels = ['Large deficit', 'Deficit', 'Maintenance', 'Slight surplus', 'Large surplus'];
+  const trainingStimulusLabels = ['Poor', 'Light', 'Moderate', 'Hard'];
+  const alcoholLabels = ['None', 'Light', 'Moderate', 'Heavy'];
+  const proteinLabels = ['Low', 'Medium', 'High', 'Extra High'];
+
+  // --- Slider elements ---
+  const sliders = {
+    trainingAge: document.getElementById('trainingAge'),
+    bodyFat: document.getElementById('bodyFat'),
+    energyBalance: document.getElementById('energyBalance'),
+    trainingStimulus: document.getElementById('trainingStimulus'),
+    protein: document.getElementById('protein'),
+    alcohol: document.getElementById('alcohol')
+  };
+
+  // --- Result elements ---
+  const muscleFill = document.getElementById('muscleFill');
+  const muscleValue = document.getElementById('muscleValue');
+  const fatFill = document.getElementById('fatFill');
+  const fatValue = document.getElementById('fatValue');
+  const verdict = document.getElementById('verdict');
+
+  // --- Calculation engine ---
+  function calculate() {
+    const ta = parseInt(sliders.trainingAge.value);
+    const bf = parseInt(sliders.bodyFat.value);
+    const eb = parseInt(sliders.energyBalance.value);
+    const ts = parseInt(sliders.trainingStimulus.value);
+    const prot = parseInt(sliders.protein.value);
+    const alc = parseInt(sliders.alcohol.value);
+
+    // --- Muscle gain potential (-100 to +100) ---
+    let muscle = 0;
+    let lockedNegative = false;
+
+    // Body fat effect
+    if (bf <= 0) {
+      // Sub 7.5%: locked negative, no override
+      muscle = -60;
+      lockedNegative = true;
+    } else if (bf === 1) {
+      muscle -= 20; // 7.5-10%: drag (always)
+    } else if (bf === 2) {
+      muscle += 0;  // 10-15%: neutral (baseline)
+    } else if (bf === 3) {
+      // 15-18%: boost only in deficit/maintenance, neutral in surplus
+      if (eb <= 2) {
+        muscle += 5;
+      }
+    } else if (bf >= 4) {
+      // 18%+: boost only in deficit/maintenance, neutral in surplus
+      if (eb <= 2) {
+        muscle += 15;
+      }
+    }
+
+    // Training age baseline
+    if (!lockedNegative) {
+      if (ta === 0) {
+        muscle += 50; // Novice: high baseline
+      } else if (ta === 1) {
+        muscle += 38; // Nov/Int
+      } else if (ta === 2) {
+        muscle += 10; // Intermediate
+      } else if (ta === 3) {
+        muscle += 5; // Adv
+      } else {
+        muscle += 3;  // Advanced: low baseline
+      }
+    }
+
+    // Energy balance effect
+    if (eb === 0) {
+      // Very large deficit: locked negative, no override
+      muscle = Math.min(muscle, -50);
+      lockedNegative = true;
+    } else if (eb === 1) {
+      muscle -= 20; // Deficit: drag
+    } else if (eb === 2) {
+      // Maintenance: context-dependent — steep drop from novice to advanced
+      if (ta === 0) {
+        muscle += 12; // Novice at maintenance: solid positive
+      } else if (ta === 1) {
+        muscle += 6;  // Nov/Int at maintenance: moderate
+      } else if (ta === 2) {
+        muscle -= 15;  // Intermediate at maintenance: negligible
+      } else if (ta === 3) {
+        muscle -= 10;  // Adv at maintenance: negligible
+      } else {
+        muscle -= 8;   // Advanced at maintenance: negligible
+      }
+    } else if (eb === 3) {
+      muscle += 15; // Slight surplus: positive
+    } else if (eb === 4) {
+      // Large surplus: slightly more than slight surplus for novices/intermediate, capped for advanced
+      if (ta <= 2) {
+        muscle += 18; // Novice/Intermediate: slight bump over slight surplus
+      } else {
+        muscle += 10; // Advanced: rate-limited, barely moves the needle
+      }
+    }
+
+    // Training stimulus modifier
+    if (!lockedNegative) {
+      if (ts === 0) {
+        muscle -= 30; // Poor stimulus
+      } else if (ts === 1) {
+        muscle -= 10; // Light
+      } else if (ts === 2) {
+        muscle += 5;  // Moderate
+      } else {
+        muscle += 15; // Hard
+      }
+
+      // In advanced deficits, hard stimulus can outpace recovery capacity.
+      // This allows moderate to outperform hard in specific high-fatigue contexts.
+      if (ta >= 3 && eb <= 1) {
+        if (ts === 2) {
+          muscle += 6; // Moderate gets an efficiency bump
+        } else if (ts === 3) {
+          muscle -= 12; // Hard gets a stronger recovery penalty
+        }
+      }
+    }
+
+    // Alcohol drag
+    muscle -= alc * 8;
+
+    // Protein intake effect on muscle gain
+    if (prot === 0) {
+      muscle -= 3; // Low protein: slight negative effect
+    } else if (prot === 1) {
+      // Medium protein: slight positive, neutral in deficit
+      if (eb >= 3) {
+        muscle += 2; // Surplus: slight positive
+      } else if (eb === 2) {
+        muscle += 1; // Maintenance: marginal
+      }
+      // Deficit: neutral
+    } else if (prot === 2) {
+      // High protein: noticeable boost in surplus, larger at maintenance, big boost in deficit
+      if (eb >= 3) {
+        muscle += 8; // Surplus: noticeable bump
+      } else if (eb === 2) {
+        muscle += 5; // Maintenance: solid boost
+      } else if (eb <= 1) {
+        muscle += 12; // Deficit: big boost
+      }
+    } else if (prot === 3) {
+      // Extra high protein: same as high in surplus, slightly more at maintenance, even bigger in deficit
+      if (eb >= 3) {
+        muscle += 8; // Surplus: same as high
+      } else if (eb === 2) {
+        muscle += 7; // Maintenance: slightly more than high
+      } else if (eb <= 1) {
+        muscle += 18; // Deficit: even bigger boost
+      }
+    }
+
+    // Semi-advanced/advanced lifters in a standard deficit with high protein:
+    // hard should be neutral, and moderate can be slightly better but still near-neutral.
+    if (ta >= 3 && eb === 1 && prot >= 2) {
+      if (ts === 3) {
+        muscle = 0;
+      } else if (ts === 2) {
+        muscle = Math.max(2, Math.min(4, muscle));
+      }
+    }
+
+    // Clamp muscle to -100..100
+    muscle = Math.max(-100, Math.min(100, muscle));
+
+    // --- Fat gain potential (-100 to +100) ---
+    let fat = 0;
+
+    // Energy balance is the primary driver
+    if (eb === 0) {
+      fat = -70; // Large deficit: active fat loss
+    } else if (eb === 1) {
+      fat = -30; // Deficit: fat loss
+    } else if (eb === 2) {
+      fat = 0;    // Maintenance: near zero
+    } else if (eb === 3) {
+      fat = 40;   // Slight surplus: moderate fat gain
+    } else if (eb === 4) {
+      fat = 90;   // Large surplus: high fat gain
+    }
+
+    // Muscle gain potential subtracts from fat gain (calories redirected to muscle)
+    if (muscle > 0) {
+      fat -= muscle * 0.15; // Higher muscle gains = less fat gain from surplus
+    }
+
+    // Hard training redirects more surplus toward muscle
+    if (ts >= 2) {
+      fat -= 2;
+    }
+
+    // Higher body fat means more stored energy available, so the body
+    // is more willing to burn fat while building muscle — this applies across all energy balances.
+    if (bf >= 5) {
+      fat -= 30;
+    } else if (bf === 4) {
+      fat -= 22;
+    } else if (bf === 3) {
+      fat -= 10;
+    }
+
+    // Alcohol increases fat gain potential
+    fat += alc * 10;
+
+    // Clamp fat to -100..100
+    fat = Math.max(-100, Math.min(100, fat));
+
+    // --- Render bars ---
+    renderBidirectionalBar(muscleFill, muscleValue, muscle, 'muscle');
+    renderBidirectionalBar(fatFill, fatValue, fat, 'fat');
+
+    // --- Verdict ---
+    renderVerdict(ta, bf, eb, ts, alc, muscle, fat);
+  }
+
+  function renderBidirectionalBar(fillEl, valueEl, value, type) {
+    const absValue = Math.abs(value);
+    const pct = (absValue / 100) * 50; // 0-50% of half the bar
+
+    fillEl.className = 'bar-fill';
+
+    if (value > 5) {
+      fillEl.classList.add('positive');
+      fillEl.style.left = '50%';
+      fillEl.style.right = '';
+      fillEl.style.width = pct + '%';
+      if (type === 'muscle') {
+        valueEl.textContent = 'Positive';
+        valueEl.style.color = 'var(--positive)';
+      } else {
+        valueEl.textContent = 'Gain';
+        valueEl.style.color = 'var(--negative)';
+      }
+    } else if (value < -5) {
+      fillEl.classList.add('negative');
+      fillEl.style.left = `calc(50% - ${pct}%)`;
+      fillEl.style.right = '';
+      fillEl.style.width = pct + '%';
+      if (type === 'muscle') {
+        valueEl.textContent = 'Negative';
+        valueEl.style.color = 'var(--negative)';
+      } else {
+        valueEl.textContent = 'Loss';
+        valueEl.style.color = 'var(--positive)';
+      }
+    } else {
+      fillEl.classList.add('neutral');
+      fillEl.style.left = '48%';
+      fillEl.style.width = '4%';
+      valueEl.textContent = 'Neutral';
+      valueEl.style.color = 'var(--neutral)';
+    }
+  }
+
+  function renderVerdict(ta, bf, eb, ts, alc, muscle, fat) {
+    let lines = [];
+
+    if (muscle < -20) {
+      lines.push('<strong>Muscle loss likely.</strong> Your levers are working against you.');
+    } else if (muscle < -5) {
+      lines.push('<strong>Minimal muscle gain.</strong> The conditions aren\'t ideal.');
+    } else if (muscle <= 5) {
+      lines.push('<strong>No real progress.</strong> You\'re treading water — maintain at best.');
+    } else if (muscle < 25) {
+      lines.push('<strong>Slow progress.</strong> You\'ll gain, but it\'ll take patience.');
+    } else if (muscle < 60) {
+      lines.push('<strong>Solid gains ahead.</strong> Good conditions for growth.');
+    } else {
+      lines.push('<strong>Maximum growth mode.</strong> Your body is primed for gains.');
+    }
+
+    if (fat < -20) {
+      lines.push('Active fat loss happening alongside.');
+    } else if (fat > 40) {
+      lines.push('Expect noticeable fat gain with this setup.');
+    } else if (fat > 10) {
+      lines.push('Some fat gain is likely.');
+    } else if (fat > -10) {
+      lines.push('Body composition stays relatively stable.');
+    }
+
+    // Special callouts
+    if (ta <= 1 && eb >= 2 && eb <= 3 && muscle > 30 && fat < 10) {
+      lines.push('This is the <strong>recomp sweet spot</strong> — muscle gain + fat loss simultaneously.');
+    }
+
+    if (ta >= 3 && eb === 4) {
+      lines.push('Rate-limited: extra calories are spilling to fat, not muscle.');
+    }
+
+    verdict.innerHTML = lines.join('<br><br>');
+  }
+
+  // --- Bind events ---
+  Object.values(sliders).forEach(slider => {
+    slider.addEventListener('input', calculate);
+  });
+
+  // Initial render
+  calculate();
+</script>
+</body>
+</html>
