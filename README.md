@@ -1,4 +1,4 @@
-# Recomp Calculator
+# Body Composition Calculator
 
 An interactive tool for visualizing how training age, body fat, energy balance, protein, training stimulus, and alcohol affect your muscle and fat gain potential.
 
